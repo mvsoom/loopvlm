@@ -2,7 +2,7 @@ torch==2.3.0
 sentencepiece
 tiktoken
 accelerate
-opencv-python
+opencv-python-headless
 Pillow
 transformers
 numpy
