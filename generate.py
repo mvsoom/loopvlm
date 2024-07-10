@@ -13,6 +13,7 @@ import torch
 import torch._dynamo.config
 import torch._inductor.config
 
+
 def device_sync(device):
     if "cuda" in device:
         torch.cuda.synchronize()
@@ -21,12 +22,11 @@ def device_sync(device):
     else:
         print(f"device={device} is not yet suppported")
 
-from transformers import AutoProcessor, PaliGemmaForConditionalGeneration
-from PIL import Image, ImageDraw, ImageFont
-import requests
-import torch
-import numpy as np
 import cv2
+import numpy as np
+import torch
+from PIL import Image, ImageDraw
+from transformers import AutoProcessor, PaliGemmaForConditionalGeneration
 
 torch._inductor.config.coordinate_descent_tuning = True
 torch._inductor.config.triton.unique_kernel_names = True
@@ -36,7 +36,6 @@ torch._inductor.config.fx_graph_cache = True # Experimental feature to reduce co
 wd = Path(__file__).parent.parent.resolve()
 sys.path.append(str(wd))
 
-from sentencepiece import SentencePieceProcessor
 
 from model import Transformer
 
@@ -435,30 +434,8 @@ def main(
             #exit(0)
 
             #exit(0)
-            device_sync(device=device) # MKG
-            if i >= 0 and interactive:
-                prompt = input("What is your prompt? ")
-                if is_chat:
-                    prompt = f"{B_INST} {prompt.strip()} {E_INST}"
-                encoded = encode_tokens(tokenizer, prompt, bos=True, device=device)
+            device_sync(device=device)  # MKG
 
-            if interactive and i >= 0:
-                buffer = []
-                period_id = tokenizer.encode('.')[0]
-                done_generating = False
-                def callback(x):
-                    nonlocal done_generating
-                    if done_generating:
-                        return
-                    buffer.append(tokenizer.decode([period_id] + x.tolist())[1:])
-                    if x.item() == tokenizer.eos_id():
-                        done_generating = True
-                    if len(buffer) == 4 or done_generating:
-                        print(''.join(buffer), end='', flush=True)
-                        buffer.clear()
-                    # print(, end='', flush=True)
-            else:
-                callback = lambda x : x
             t0 = time.perf_counter()
             import contextlib
             prof = contextlib.nullcontext()
@@ -472,14 +449,12 @@ def main(
                     draft_model=draft_model,
                     speculate_k=speculate_k,
                     interactive=interactive,
-                    callback=callback,
+                    callback=lambda x: x,
                     temperature=temperature,
                     top_k=top_k,
                 )
                 aggregate_metrics['accept_counts'].append(metrics['accept_counts'])
-            if i == -1:
-                print(f"Compilation time: {time.perf_counter() - t0:.2f} seconds")
-                continue
+
             if hasattr(prof, "export_chrome_trace"):
                 if use_tp:
                     prof.export_chrome_trace(f"{profile}_rank_{rank}.json")
@@ -488,14 +463,9 @@ def main(
             device_sync(device=device) # MKG
             t = time.perf_counter() - t0
 
-            if not interactive:
-                #print(y)
-                print(processor.decode(y, skip_special_tokens=True))
-                #print(tokenizer.decode(y.tolist()))
-            else:
-                print()
-
             decoded_output = processor.decode(y, skip_special_tokens=True)
+            print(decoded_output)
+
             tokens_generated = y.size(0) - prompt_length
             tokens_sec = tokens_generated / t
 
@@ -593,8 +563,7 @@ if __name__ == '__main__':
     parser.add_argument('--vid_end', type=int, default=10, help='Where in video to end detecting (seconds).')
 
     ### OLD PARAMS
-    
-    parser.add_argument('--interactive', action='store_true', help='Whether to launch in interactive mode')
+
     parser.add_argument('--max_new_tokens', type=int, default=10, help='Maximum number of new tokens.')
     parser.add_argument('--top_k', type=int, default=200, help='Top-k for sampling.')
     parser.add_argument('--temperature', type=float, default=0.8, help='Temperature for sampling.')

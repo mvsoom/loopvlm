@@ -2,13 +2,15 @@
 
 ### Setup and run:
 ```
-pip3 install -r requirements.txt
+# git clone https://github.com/mvsoom/loopvlm.git
+
+pip install -r requirements.txt
 
 export MODEL_REPO=google/paligemma-3b-mix-224
 export HF_TOKEN=[...]
 
 scripts/prepare.sh $MODEL_REPO $HF_TOKEN
-python generate.py --compile --checkpoint_path checkpoints/$MODEL_REPO/model_int8.pth --prompt "detect car" --vid_path cars.mp4  --vid_start 20 --vid_end 35 --max_new_tokens 10
+python generate.py --compile --checkpoint_path checkpoints/$MODEL_REPO/model_int8.pth --prompt "detect car" --vid_path cars.mp4  --vid_start 0 --vid_end 10 --max_new_tokens 10
 ```
 
 # gpt-fast
